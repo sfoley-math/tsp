@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>TSP Competition Mode</title>
+
+<style>
+
+body { font-family: Arial; text-align: center; }
+
+canvas { border: 1px solid black; margin-top: 10px; }
+
+button { margin: 4px; padding: 6px 10px; }
+
+#leaderboard { margin-top: 15px; }
+
+.hidden { display: none; }
+
+table { margin: auto; border-collapse: collapse; }
+
+td, th { border: 1px solid black; padding: 4px 8px; }
+
+</style>
+
+</head>
+
+<body>
+
+
+
+<h2>TSP Competition Mode</h2>
+
+
+
+<div>
+
+  <button onclick="resetRoute()">Reset Route</button>
+
+  <button onclick="generateRandomCities()">Random Cities</button>
+
+</div>
+
+
+
+<div>
+
+  <strong>Presets:</strong>
+
+  <button onclick="generatePreset(1)">Preset 1</button>
+
+  <button onclick="generatePreset(2)">Preset 2</button>
+
+  <button onclick="generatePreset(3)">Preset 3</button>
+
+  <button onclick="generatePreset(4)">Preset 4</button>
+
+  <button onclick="generatePreset(5)">Preset 5</button>
+
+</div>
+
+
+
+<p>
+
+  Name: <input type="text" id="playerName" placeholder="Enter name">
+
+</p>
+
+
+
+<p>
+
+  Current Distance: <span id="currentDistance">0</span> |
+
+  Best Found: <span id="bestDistance">∞</span>
+
+</p>
+
+
+
+<canvas id="canvas" width="600" height="500"></canvas>
+
+
+
+<div id="leaderboard">
+
+  <h3>Leaderboard</h3>
+
+  <table id="leaderboardTable">
+
+    <tr><th>Rank</th><th>Name</th><th>Distance</th></tr>
+
+  </table>
+
+</div>
+
+
+
+<br>
+
+<button onclick="showTeacherLogin()">Teacher Key</button>
+
+
+
+<div id="teacherPanel" class="hidden">
+
+  <p>Optimal Distance: <span id="optimalValue">Calculating...</span></p>
+
+  <p>Best Student Gap: <span id="gapValue">--</span></p>
+
+</div>
+
+
+
+<script>
+
+const canvas = document.getElementById("canvas");
+
+const ctx = canvas.getContext("2d");
+
+
+
+const NUM_CITIES = 10;
+
+const CITY_RADIUS = 6;
+
+const TEACHER_PASSWORD = "tspteacher";
+
+
+
+let cities = [];
+
+let route = [];
+
+let currentDistance = 0;
+
+let bestDistance = Infinity;
+
+let leaderboard = [];
+
+let hoveredCityIndex = null;
+
+let mouseX = 0;
+
+let mouseY = 0;
+
+let optimalDistance = null;
+
+
+
+/* ---------------- Seeded Random ---------------- */
+
+function seededRandom(seed) {
+
+  let x = Math.sin(seed) * 10000;
+
+  return x - Math.floor(x);
+
+}
+
+
+
+function generateCitiesWithSeed(seedBase) {
+
+  cities = [];
+
+  route = [];
+
+  leaderboard = [];
+
+  optimalDistance = null;
+
+  currentDistance = 0;
+
+  bestDistance = Infinity;
+
+
+
+  document.getElementById("currentDistance").textContent = "0";
+
+  document.getElementById("bestDistance").textContent = "∞";
+
+  document.getElementById("optimalValue").textContent = "Calculating...";
+
+  document.getElementById("gapValue").textContent = "--";
+
+
+
+  updateLeaderboard();
+
+
+
+  for (let i = 0; i < NUM_CITIES; i++) {
+
+    let xSeed = seedBase + i * 17;
+
+    let ySeed = seedBase + i * 53;
+
+
+
+    cities.push({
+
+      x: seededRandom(xSeed) * (canvas.width - 40) + 20,
+
+      y: seededRandom(ySeed) * (canvas.height - 40) + 20
+
+    });
+
+  }
+
+
+
+  computeOptimal();
+
+  draw();
+
+}
+
+
+
+function generatePreset(n) { generateCitiesWithSeed(n * 100); }
+
+function generateRandomCities() {
+
+  generateCitiesWithSeed(Math.floor(Math.random() * 100000));
+
+}
+
+
+
+function resetRoute() {
+
+  route = [];
+
+  currentDistance = 0;
+
+  document.getElementById("currentDistance").textContent = "0";
+
+  draw();
+
+}
+
+
+
+/* ---------------- Distance ---------------- */
+
+function distance(a, b) {
+
+  return Math.hypot(a.x - b.x, a.y - b.y);
+
+}
+
+
+
+/* ---------------- Click ---------------- */
+
+canvas.addEventListener("click", function(event) {
+
+  const rect = canvas.getBoundingClientRect();
+
+  const clickX = event.clientX - rect.left;
+
+  const clickY = event.clientY - rect.top;
+
+
+
+  for (let i = 0; i < cities.length; i++) {
+
+    if (Math.hypot(cities[i].x - clickX, cities[i].y - clickY) < CITY_RADIUS) {
+
+
+
+      if (route.includes(i)) return;
+
+      route.push(i);
+
+
+
+      if (route.length > 1) {
+
+        const prev = cities[route[route.length - 2]];
+
+        const curr = cities[i];
+
+        currentDistance += distance(prev, curr);
+
+      }
+
+
+
+      if (route.length === NUM_CITIES) {
+
+        currentDistance += distance(
+
+          cities[route[route.length - 1]],
+
+          cities[route[0]]
+
+        );
+
+        recordScore(currentDistance);
+
+      }
+
+
+
+      document.getElementById("currentDistance").textContent =
+
+        currentDistance.toFixed(2);
+
+
+
+      draw();
+
+    }
+
+  }
+
+});
+
+
+
+/* ---------------- Hover Preview ---------------- */
+
+canvas.addEventListener("mousemove", function(event) {
+
+  const rect = canvas.getBoundingClientRect();
+
+  mouseX = event.clientX - rect.left;
+
+  mouseY = event.clientY - rect.top;
+
+
+
+  hoveredCityIndex = null;
+
+
+
+  for (let i = 0; i < cities.length; i++) {
+
+    if (Math.hypot(cities[i].x - mouseX, cities[i].y - mouseY) < CITY_RADIUS) {
+
+      hoveredCityIndex = i;
+
+      break;
+
+    }
+
+  }
+
+
+
+  draw();
+
+});
+
+
+
+/* ---------------- Record Score ---------------- */
+
+function recordScore(score) {
+
+  const name = document.getElementById("playerName").value || "Anonymous";
+
+  leaderboard.push({ name: name, distance: score });
+
+  leaderboard.sort((a, b) => a.distance - b.distance);
+
+
+
+  if (score < bestDistance) {
+
+    bestDistance = score;
+
+    document.getElementById("bestDistance").textContent =
+
+      bestDistance.toFixed(2);
+
+  }
+
+
+
+  updateLeaderboard();
+
+  updateGap();
+
+}
+
+
+
+function updateLeaderboard() {
+
+  const table = document.getElementById("leaderboardTable");
+
+  table.innerHTML = "<tr><th>Rank</th><th>Name</th><th>Distance</th></tr>";
+
+
+
+  leaderboard.forEach((entry, index) => {
+
+    table.innerHTML += `<tr>
+
+      <td>${index + 1}</td>
+
+      <td>${entry.name}</td>
+
+      <td>${entry.distance.toFixed(2)}</td>
+
+    </tr>`;
+
+  });
+
+}
+
+
+
+/* ---------------- Teacher Key ---------------- */
+
+function showTeacherLogin() {
+
+  const pw = prompt("Enter teacher password:");
+
+  if (pw === TEACHER_PASSWORD) {
+
+    document.getElementById("teacherPanel").classList.remove("hidden");
+
+    updateGap();
+
+  }
+
+}
+
+
+
+function updateGap() {
+
+  if (optimalDistance && leaderboard.length > 0) {
+
+    const bestStudent = leaderboard[0].distance;
+
+    const gap = bestStudent - optimalDistance;
+
+    document.getElementById("gapValue").textContent =
+
+      gap.toFixed(2);
+
+  }
+
+}
+
+
+
+/* ---------------- Brute Force Optimal ---------------- */
+
+function computeOptimal() {
+
+  let indices = [];
+
+  for (let i = 1; i < NUM_CITIES; i++) indices.push(i);
+
+
+
+  optimalDistance = Infinity;
+
+
+
+  function permute(arr, l) {
+
+    if (l === arr.length) {
+
+      let total = 0;
+
+      let prev = cities[0];
+
+      for (let i of arr) {
+
+        total += distance(prev, cities[i]);
+
+        prev = cities[i];
+
+      }
+
+      total += distance(prev, cities[0]);
+
+      if (total < optimalDistance) optimalDistance = total;
+
+      return;
+
+    }
+
+
+
+    for (let i = l; i < arr.length; i++) {
+
+      [arr[l], arr[i]] = [arr[i], arr[l]];
+
+      permute(arr, l + 1);
+
+      [arr[l], arr[i]] = [arr[i], arr[l]];
+
+    }
+
+  }
+
+
+
+  setTimeout(() => {
+
+    permute(indices, 0);
+
+    document.getElementById("optimalValue").textContent =
+
+      optimalDistance.toFixed(2);
+
+  }, 50);
+
+}
+
+
+
+/* ---------------- Draw ---------------- */
+
+function draw() {
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+
+  // Draw route
+
+  if (route.length > 1) {
+
+    ctx.beginPath();
+
+    ctx.moveTo(cities[route[0]].x, cities[route[0]].y);
+
+    for (let i = 1; i < route.length; i++) {
+
+      ctx.lineTo(cities[route[i]].x, cities[route[i]].y);
+
+    }
+
+    if (route.length === NUM_CITIES) {
+
+      ctx.lineTo(cities[route[0]].x, cities[route[0]].y);
+
+    }
+
+    ctx.strokeStyle = "blue";
+
+    ctx.lineWidth = 2;
+
+    ctx.stroke();
+
+  }
+
+
+
+  // Hover distance preview
+
+  if (hoveredCityIndex !== null &&
+
+      route.length > 0 &&
+
+      !route.includes(hoveredCityIndex)) {
+
+
+
+    const lastCity = cities[route[route.length - 1]];
+
+    const hoverCity = cities[hoveredCityIndex];
+
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(lastCity.x, lastCity.y);
+
+    ctx.lineTo(hoverCity.x, hoverCity.y);
+
+    ctx.strokeStyle = "gray";
+
+    ctx.setLineDash([5,5]);
+
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+
+
+
+    const preview = distance(lastCity, hoverCity).toFixed(2);
+
+    ctx.fillStyle = "black";
+
+    ctx.fillText(preview, mouseX + 10, mouseY - 10);
+
+  }
+
+
+
+  // Draw cities
+
+  for (let i = 0; i < cities.length; i++) {
+
+    ctx.beginPath();
+
+    ctx.arc(cities[i].x, cities[i].y, CITY_RADIUS, 0, Math.PI * 2);
+
+
+
+    if (route.includes(i)) ctx.fillStyle = "orange";
+
+    else if (i === hoveredCityIndex) ctx.fillStyle = "red";
+
+    else ctx.fillStyle = "black";
+
+
+
+    ctx.fill();
+
+  }
+
+}
+
+
+
+generatePreset(1);
+
+</script>
+
+
+
+</body>
+
+</html>
