@@ -32,12 +32,11 @@ button { margin: 4px; padding: 6px 10px; }
 </p>
 
 <p>
-  Current Distance: <span id="currentDistance">0</span>
+  Current Distance: <span id="currentDistance">0</span> |
+  Lowest Distance: <span id="bestDistance">∞</span>
 </p>
 
 <canvas id="canvas" width="600" height="500"></canvas>
-
-
 
 <script>
 const canvas = document.getElementById("canvas");
@@ -49,6 +48,7 @@ const CITY_RADIUS = 6;
 let cities = [];
 let route = [];
 let currentDistance = 0;
+let bestDistance = Infinity;
 let hoveredCityIndex = null;
 let mouseX = 0;
 let mouseY = 0;
@@ -66,17 +66,18 @@ function seededRandom(seed) {
 function generateCitiesWithSeed(seedBase) {
   cities = [];
   route = [];
-  optimalDistance = null;
-  optimalRoute = [];
-  teacherMode = false;
   currentDistance = 0;
-  document.getElementById("currentDistance").textContent = "0";
+  hoveredCityIndex = null;
+  teacherMode = false;
 
-  // Create cities based on seed
+  bestDistance = Infinity;
+  document.getElementById("currentDistance").textContent = "0";
+  document.getElementById("bestDistance").textContent = "∞";
+
+  // Create cities
   for (let i = 0; i < NUM_CITIES; i++) {
     let xSeed = seedBase + i * 17;
     let ySeed = seedBase + i * 53;
-
     cities.push({
       x: seededRandom(xSeed) * (canvas.width - 40) + 20,
       y: seededRandom(ySeed) * (canvas.height - 40) + 20
@@ -89,23 +90,12 @@ function generateCitiesWithSeed(seedBase) {
 
 /* ---------------- Presets ---------------- */
 function generatePreset(n) {
-  // Some presets are intentionally "clustered + scattered" to make optimal path hard
   switch(n) {
-    case 1:
-      generateCitiesWithSeed(101); // moderately convex
-      break;
-    case 2:
-      generateCitiesWithSeed(202); // harder shape
-      break;
-    case 3:
-      generateCitiesWithSeed(303); // easy-ish convex
-      break;
-    case 4:
-      generateCitiesWithSeed(404); // hard: some tight clusters
-      break;
-    case 5:
-      generateCitiesWithSeed(505); // moderately convex
-      break;
+    case 1: generateCitiesWithSeed(101); break; // moderately convex
+    case 2: generateCitiesWithSeed(202); break; // hard shape
+    case 3: generateCitiesWithSeed(303); break; // easy-ish convex
+    case 4: generateCitiesWithSeed(404); break; // hard: clusters
+    case 5: generateCitiesWithSeed(505); break; // moderately convex
   }
 }
 function generateRandomCities() {
@@ -142,6 +132,11 @@ canvas.addEventListener("click", function(event) {
 
       if (route.length === NUM_CITIES) {
         currentDistance += distance(cities[route[route.length-1]], cities[route[0]]);
+        // Update bestDistance if this is lower
+        if (currentDistance < bestDistance) {
+          bestDistance = currentDistance;
+          document.getElementById("bestDistance").textContent = bestDistance.toFixed(2);
+        }
       }
 
       document.getElementById("currentDistance").textContent =
@@ -279,3 +274,6 @@ function draw() {
 
 generatePreset(1);
 </script>
+
+</body>
+</html>
