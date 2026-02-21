@@ -2,20 +2,16 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>TSP Competition Mode</title>
+<title>TSP Student Challenge</title>
 <style>
 body { font-family: Arial; text-align: center; }
 canvas { border: 1px solid black; margin-top: 10px; }
 button { margin: 4px; padding: 6px 10px; }
-#leaderboard { margin-top: 15px; }
-.hidden { display: none; }
-table { margin: auto; border-collapse: collapse; }
-td, th { border: 1px solid black; padding: 4px 8px; }
 </style>
 </head>
 <body>
 
-<h2>TSP Competition Mode</h2>
+<h2>TSP Student Challenge</h2>
 
 <div>
   <button onclick="resetRoute()">Reset Route</button>
@@ -32,30 +28,18 @@ td, th { border: 1px solid black; padding: 4px 8px; }
 </div>
 
 <p>
-  Name: <input type="text" id="playerName" placeholder="Enter name">
+  Name (optional): <input type="text" id="playerName" placeholder="Enter name">
 </p>
 
 <p>
-  Current Distance: <span id="currentDistance">0</span> |
-  Best Found: <span id="bestDistance">∞</span>
+  Current Distance: <span id="currentDistance">0</span>
 </p>
 
 <canvas id="canvas" width="600" height="500"></canvas>
 
-<div id="leaderboard">
-  <h3>Leaderboard</h3>
-  <table id="leaderboardTable">
-    <tr><th>Rank</th><th>Name</th><th>Distance</th></tr>
-  </table>
-</div>
-
-<br>
-<button onclick="showTeacherLogin()">Teacher Key</button>
-
-<div id="teacherPanel" class="hidden">
-  <p>Optimal Distance: <span id="optimalValue">Calculating...</span></p>
-  <p>Best Student Gap: <span id="gapValue">--</span></p>
-</div>
+<p style="font-size: 0.9em; color: gray;">
+Hint: Press <strong>Shift + T</strong> to reveal the optimal route (teacher only)
+</p>
 
 <script>
 const canvas = document.getElementById("canvas");
@@ -67,8 +51,6 @@ const CITY_RADIUS = 6;
 let cities = [];
 let route = [];
 let currentDistance = 0;
-let bestDistance = Infinity;
-let leaderboard = [];
 let hoveredCityIndex = null;
 let mouseX = 0;
 let mouseY = 0;
@@ -86,19 +68,13 @@ function seededRandom(seed) {
 function generateCitiesWithSeed(seedBase) {
   cities = [];
   route = [];
-  leaderboard = [];
   optimalDistance = null;
   optimalRoute = [];
   teacherMode = false;
-
   currentDistance = 0;
-  bestDistance = Infinity;
-
   document.getElementById("currentDistance").textContent = "0";
-  document.getElementById("bestDistance").textContent = "∞";
 
-  updateLeaderboard();
-
+  // Create cities based on seed
   for (let i = 0; i < NUM_CITIES; i++) {
     let xSeed = seedBase + i * 17;
     let ySeed = seedBase + i * 53;
@@ -113,11 +89,30 @@ function generateCitiesWithSeed(seedBase) {
   draw();
 }
 
-function generatePreset(n) { generateCitiesWithSeed(n * 100); }
+/* ---------------- Presets ---------------- */
+function generatePreset(n) {
+  // Some presets are intentionally "clustered + scattered" to make optimal path hard
+  switch(n) {
+    case 1:
+      generateCitiesWithSeed(101); // moderately convex
+      break;
+    case 2:
+      generateCitiesWithSeed(202); // harder shape
+      break;
+    case 3:
+      generateCitiesWithSeed(303); // easy-ish convex
+      break;
+    case 4:
+      generateCitiesWithSeed(404); // hard: some tight clusters
+      break;
+    case 5:
+      generateCitiesWithSeed(505); // moderately convex
+      break;
+  }
+}
 function generateRandomCities() {
   generateCitiesWithSeed(Math.floor(Math.random() * 100000));
 }
-
 function resetRoute() {
   route = [];
   currentDistance = 0;
@@ -138,8 +133,7 @@ canvas.addEventListener("click", function(event) {
 
   for (let i = 0; i < cities.length; i++) {
     if (Math.hypot(cities[i].x - clickX, cities[i].y - clickY) < CITY_RADIUS) {
-
-      if (route.includes(i)) return;
+      if (route.includes(i)) return; // already selected
       route.push(i);
 
       if (route.length > 1) {
@@ -149,11 +143,7 @@ canvas.addEventListener("click", function(event) {
       }
 
       if (route.length === NUM_CITIES) {
-        currentDistance += distance(
-          cities[route[route.length - 1]],
-          cities[route[0]]
-        );
-        recordScore(currentDistance);
+        currentDistance += distance(cities[route[route.length-1]], cities[route[0]]);
       }
 
       document.getElementById("currentDistance").textContent =
@@ -164,35 +154,23 @@ canvas.addEventListener("click", function(event) {
   }
 });
 
-/* ---------------- Leaderboard ---------------- */
-function recordScore(score) {
-  const name = document.getElementById("playerName").value || "Anonymous";
-  leaderboard.push({ name: name, distance: score });
-  leaderboard.sort((a, b) => a.distance - b.distance);
+/* ---------------- Hover Preview ---------------- */
+canvas.addEventListener("mousemove", function(event) {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = event.clientX - rect.left;
+  mouseY = event.clientY - rect.top;
 
-  if (score < bestDistance) {
-    bestDistance = score;
-    document.getElementById("bestDistance").textContent =
-      bestDistance.toFixed(2);
+  hoveredCityIndex = null;
+  for (let i = 0; i < cities.length; i++) {
+    if (Math.hypot(cities[i].x - mouseX, cities[i].y - mouseY) < CITY_RADIUS) {
+      hoveredCityIndex = i;
+      break;
+    }
   }
+  draw();
+});
 
-  updateLeaderboard();
-}
-
-function updateLeaderboard() {
-  const table = document.getElementById("leaderboardTable");
-  table.innerHTML = "<tr><th>Rank</th><th>Name</th><th>Distance</th></tr>";
-
-  leaderboard.forEach((entry, index) => {
-    table.innerHTML += `<tr>
-      <td>${index + 1}</td>
-      <td>${entry.name}</td>
-      <td>${entry.distance.toFixed(2)}</td>
-    </tr>`;
-  });
-}
-
-/* ---------------- Stealth Teacher Mode ---------------- */
+/* ---------------- Teacher Mode Shortcut ---------------- */
 document.addEventListener("keydown", function(e) {
   if (e.shiftKey && e.key.toLowerCase() === "t") {
     teacherMode = !teacherMode;
@@ -231,31 +209,13 @@ function computeOptimal() {
 
     for (let i = l; i < arr.length; i++) {
       [arr[l], arr[i]] = [arr[i], arr[l]];
-      permute(arr, l + 1);
+      permute(arr, l+1);
       [arr[l], arr[i]] = [arr[i], arr[l]];
     }
   }
 
   setTimeout(() => permute(indices, 0), 50);
 }
-
-/* ---------------- Hover Preview ---------------- */
-canvas.addEventListener("mousemove", function(event) {
-  const rect = canvas.getBoundingClientRect();
-  mouseX = event.clientX - rect.left;
-  mouseY = event.clientY - rect.top;
-
-  hoveredCityIndex = null;
-
-  for (let i = 0; i < cities.length; i++) {
-    if (Math.hypot(cities[i].x - mouseX, cities[i].y - mouseY) < CITY_RADIUS) {
-      hoveredCityIndex = i;
-      break;
-    }
-  }
-
-  draw();
-});
 
 /* ---------------- Draw ---------------- */
 function draw() {
@@ -289,12 +249,12 @@ function draw() {
     ctx.stroke();
   }
 
-  // Hover preview
+  // Hover distance preview
   if (hoveredCityIndex !== null &&
       route.length > 0 &&
       !route.includes(hoveredCityIndex)) {
 
-    const lastCity = cities[route[route.length - 1]];
+    const lastCity = cities[route[route.length-1]];
     const hoverCity = cities[hoveredCityIndex];
 
     ctx.beginPath();
@@ -310,10 +270,10 @@ function draw() {
     ctx.fillText(preview, mouseX + 10, mouseY - 10);
   }
 
-  // Cities
+  // Draw cities
   for (let i = 0; i < cities.length; i++) {
     ctx.beginPath();
-    ctx.arc(cities[i].x, cities[i].y, CITY_RADIUS, 0, Math.PI * 2);
+    ctx.arc(cities[i].x, cities[i].y, CITY_RADIUS, 0, Math.PI*2);
     ctx.fillStyle = route.includes(i) ? "orange" : "black";
     ctx.fill();
   }
@@ -321,6 +281,3 @@ function draw() {
 
 generatePreset(1);
 </script>
-
-</body>
-</html>
