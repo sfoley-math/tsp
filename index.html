@@ -1,3 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TSP Competition Mode</title>
+<style>
+body { font-family: Arial; text-align: center; }
+canvas { border: 1px solid black; margin-top: 10px; }
+button { margin: 4px; padding: 6px 10px; }
+#leaderboard { margin-top: 15px; }
+.hidden { display: none; }
+table { margin: auto; border-collapse: collapse; }
+td, th { border: 1px solid black; padding: 4px 8px; }
+</style>
+</head>
+<body>
+
+<h2>TSP Competition Mode</h2>
+
+<div>
+  <button onclick="resetRoute()">Reset Route</button>
+  <button onclick="generateRandomCities()">Random Cities</button>
+</div>
+
+<div>
+  <strong>Presets:</strong>
+  <button onclick="generatePreset(1)">Preset 1</button>
+  <button onclick="generatePreset(2)">Preset 2</button>
+  <button onclick="generatePreset(3)">Preset 3</button>
+  <button onclick="generatePreset(4)">Preset 4</button>
+  <button onclick="generatePreset(5)">Preset 5</button>
+</div>
+
+<p>
+  Name: <input type="text" id="playerName" placeholder="Enter name">
+</p>
+
+<p>
+  Current Distance: <span id="currentDistance">0</span> |
+  Best Found: <span id="bestDistance">∞</span>
+</p>
+
+<canvas id="canvas" width="600" height="500"></canvas>
+
+<div id="leaderboard">
+  <h3>Leaderboard</h3>
+  <table id="leaderboardTable">
+    <tr><th>Rank</th><th>Name</th><th>Distance</th></tr>
+  </table>
+</div>
+
+<br>
+<button onclick="showTeacherLogin()">Teacher Key</button>
+
+<div id="teacherPanel" class="hidden">
+  <p>Optimal Distance: <span id="optimalValue">Calculating...</span></p>
+  <p>Best Student Gap: <span id="gapValue">--</span></p>
+</div>
+
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -262,3 +321,6 @@ function draw() {
 
 generatePreset(1);
 </script>
+
+</body>
+</html>
